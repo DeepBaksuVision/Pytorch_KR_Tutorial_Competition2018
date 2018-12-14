@@ -46,6 +46,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python-setuptools \
         python3-setuptools \
         vim \
+        rsync \
         ${ADDITIONAL_PACKAGE} \
         && rm -rf /var/lib/apt/lists/*
 
@@ -94,6 +95,31 @@ RUN export PYTHONIOENCODING=utf-8
 
 RUN cd You_Only_Look_Once
 RUN pip3 install setuptools numpy gitpython torchvision_nightly wandb imgaug pillow matplotlib visdom
+
+# PASCAL 2007 & 2012 Datasets Download and Setting
+RUN mkdir /datasets
+RUN cd /datasets
+
+RUN wget http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar
+RUN wget http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtrainval_06-Nov-2007.tar
+RUN wget http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar
+
+RUN wget -P /datasets/ https://raw.githubusercontent.com/pjreddie/darknet/master/data/voc.names
+
+RUN tar xf VOCtrainval_11-May-2012.tar
+RUN tar xf VOCtrainval_06-Nov-2007.tar
+RUN tar xf VOCtest_06-Nov-2007.tar
+
+RUN mv /VOCdevkit/VOC2007/* /datasets/
+RUN rsync -av /VOCdevkit/VOC2012/ /datasets/
+
+RUN rm -rf /VOCdevkit
+RUN rm -rf /*.tar
+
+# make train & test script
+# train script
+RUN mkdir /You_Only_Look_Once/script/
+RUN echo python3 main.py --mode train --data_path /datasets/ --class_path /datasets/voc.names --num_class 20 --batch_size 16 --num_gpus 1 --use_wandb False --use_visdom False >> /You_Only_Look_Once/script/train.sh
 
 # issue was not updated
 #RUN pip3 install -r requirements.txt
