@@ -53,6 +53,9 @@ $ sh script/test.sh
 ```
 
 ## Docker Images
+```bash
+$ docker pull dhhwang89/you_only_look_once:0.1.0
+```
 see [[dhhwang89/you_only_look_once]](https://hub.docker.com/r/dhhwang89/you_only_look_once)
 
 ## Detail Guide
