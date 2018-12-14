@@ -47,6 +47,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3-setuptools \
         vim \
         rsync \
+        python3-tk \
         ${ADDITIONAL_PACKAGE} \
         && rm -rf /var/lib/apt/lists/*
 
@@ -86,6 +87,7 @@ ENV LD_LIBRARY_PATH /usr/local/cuda/extras/CUPTI/lib64:$LD_LIBRARY_PATH
 # Install0 Torch preview version
 RUN pip3 install torch_nightly -f https://download.pytorch.org/whl/nightly/cu90/torch_nightly.html
 
+# Clone YOLO Repository
 RUN git clone https://github.com/DeepBaksuVision/You_Only_Look_Once.git
 
 # add enviroments setting for utf-8 encoding in python
@@ -93,34 +95,45 @@ RUN echo export PYTHONIOENCODING=utf-8 >> ~/.bashrc
 RUN export PYTHONIOENCODING=utf-8
 #RUN sh enviroments_setting.sh
 
-RUN cd You_Only_Look_Once
-RUN pip3 install setuptools numpy gitpython torchvision_nightly wandb imgaug pillow matplotlib visdom
+# Install Dependency package
+RUN cd You_Only_Look_Once && pip3 install -r requirements.txt
+RUN cd You_Only_Look_Once && python3 utilities/download_checkpoint.py
 
 # PASCAL 2007 & 2012 Datasets Download and Setting
 RUN mkdir /datasets
-RUN cd /datasets
+RUN mkdir /datasets/train
+RUN mkdir /datasets/test
 
+# Setting train dataset
 RUN wget http://host.robots.ox.ac.uk/pascal/VOC/voc2012/VOCtrainval_11-May-2012.tar
 RUN wget http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtrainval_06-Nov-2007.tar
 RUN wget http://host.robots.ox.ac.uk/pascal/VOC/voc2007/VOCtest_06-Nov-2007.tar
-
-RUN wget -P /datasets/ https://raw.githubusercontent.com/pjreddie/darknet/master/data/voc.names
 
 RUN tar xf VOCtrainval_11-May-2012.tar
 RUN tar xf VOCtrainval_06-Nov-2007.tar
 RUN tar xf VOCtest_06-Nov-2007.tar
 
-RUN mv /VOCdevkit/VOC2007/* /datasets/
-RUN rsync -av /VOCdevkit/VOC2012/ /datasets/
+RUN mv /VOCdevkit/VOC2007/* /datasets/train/
+RUN rsync -av /VOCdevkit/VOC2012/ /datasets/train/
 
 RUN rm -rf /VOCdevkit
 RUN rm -rf /*.tar
 
+# Setting test dataset
+RUN wget http://host.robots.ox.ac.uk/pascal/VOC/voc2011/VOCtrainval_25-May-2011.tar
+RUN tar xf VOCtrainval_25-May-2011.tar
+
+RUN mv TrainVal/VOCdevkit/VOC2011/* /datasets/test/
+RUN rm -rf /TrainVal
+RUN rm -rf /*.tar
+
+# download class list file
+RUN wget -P /datasets/ https://raw.githubusercontent.com/pjreddie/darknet/master/data/voc.names
+
 # make train & test script
 # train script
 RUN mkdir /You_Only_Look_Once/script/
-RUN echo python3 main.py --mode train --data_path /datasets/ --class_path /datasets/voc.names --num_class 20 --batch_size 16 --num_gpus 1 --use_wandb False --use_visdom False >> /You_Only_Look_Once/script/train.sh
+RUN echo python3 main.py --mode train --data_path /datasets/train/ --class_path /datasets/voc.names --num_class 20 --batch_size 16 --num_gpus 1 --use_wandb False --use_visdom False >> /You_Only_Look_Once/script/train.sh
 
-# issue was not updated
-#RUN pip3 install -r requirements.txt
-
+# test script
+RUN echo python3 main.py --mode test --data_path /datasets/test/ --class_path /datasets/voc.names --num_class 20 --batch_size 1 --num_gpus 1 --use_wandb False --use_visdom False >> /You_Only_Look_Once/script/test.sh --checkpoint_path ckpt_e401dd2_ep00400_loss3.2541_lr0.00095.pth.tar
