@@ -45,7 +45,6 @@ $ sh run.sh
 #### running YOLOv1 train / test
 
 ```bash
-$ cd You_Only_Look_Once
 
 # train
 $ sh script/train.sh
